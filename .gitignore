@@ -1,0 +1,62 @@
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+
+# Virtual environments (Windows + general)
+venv/
+.venv/
+ENV/
+env/
+
+# If a venv was accidentally created in repo root
+/Include/
+/Lib/
+/Scripts/
+/pyvenv.cfg
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# Logs / temp
+*.log
+*.tmp
+*.swp
+
+# OS / IDE
+Thumbs.db
+Desktop.ini
+.idea/
+
+# VS Code (ignore everything except shared workspace configs)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# Project generated outputs / data dumps
+/outputs/
+/web_output/
+/wan_out/
+/wanx_out/
+
+# Local runtime artifacts frequently produced by this repo
+/app_msg_list.csv
+/filtered.csv
+/paper.json
+
+# Local config with credentials/tokens (commit sanitized *.example.* versions instead)
+/wechat.yaml
+/rednotes.yaml
+/aily_cover.yaml
+/cover_gen.yaml
+.env
+.env.*

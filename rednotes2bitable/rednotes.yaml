@@ -1,0 +1,288 @@
+since: '2026-01-20'
+maxcrawl: 20
+interval_sec: 5.0
+accounts:
+- name: 赛博禅心
+  url: https://www.xiaohongshu.com/user/profile/5b6bee5a6b58b7037ebad058
+- name: AI异类弗兰克
+  url: https://www.xiaohongshu.com/user/profile/5ec66abd0000000001006a8a
+- name: AI信息Gap
+  url: https://www.xiaohongshu.com/user/profile/65bd9b30000000000d01ce9e
+- name: 沃垠AI
+  url: https://www.xiaohongshu.com/user/profile/614c5d3a0000000002026594
+- name: 赛博自由老爹
+  url: https://www.xiaohongshu.com/user/profile/66d6b672000000000d026b71
+- name: 晓白和林亦
+  url: https://www.xiaohongshu.com/user/profile/61571bb00000000002023a6d
+#- name: Super Winnie 
+#  url: https://www.xiaohongshu.com/user/profile/5da29e450000000001007fae
+# 视频太多，暂不考虑，但是确实是女性向用户的AI顶流之一
+#- name: 朋克周
+#  url: https://www.xiaohongshu.com/user/profile/65f18f73000000000500d56f
+# 同上，视频太多
+- name: 蜗牛的科技笔记
+  url: https://www.xiaohongshu.com/user/profile/5faedce8000000000101c8a3
+- name: 小盖
+  url: https://www.xiaohongshu.com/user/profile/6720c690000000001c01b883
+- name: 点点AI
+  URl : https://www.xiaohongshu.com/user/profile/6183ecf0000000001000a284
+- name:
+
+qwen:
+  api_key: sk-fa546040e339425d9164bf43ae05501b
+  base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  model: qwen3-vl-plus
+  timeout_sec: 120
+  enable_thinking: true
+
+prompt_bitable_one_liner: |
+  你是一名内容编辑，需要把多条内容压缩为“可读的一句话总结”，用于写入飞书多维表格。
+
+  输入：一个 JSON 数组，每个元素包含：
+  - key：唯一键
+  - title：标题
+  - summary：已有摘要/二次分析（可能较长）
+
+  输出要求（必须严格遵守）：
+  - 只输出 1 个 JSON 数组，数组长度与输入一致
+  - 每个元素必须是：{"key": "...", "one_liner": "..."}
+  - one_liner：中文 18–40 字，1 句话，不要换行，不要使用 URL，不要使用“根据以上内容”等套话，不要列点
+  - 信息结构：价值判断 + 主要信息点 + 风险/限制（如有）
+
+feishu:
+  app_id: cli_a9f8b4203eb8dcca
+  app_secret: aViEyBopvecfzOnKICvb3elkWKTeBefO
+  receive_id_type: chat_id
+  receive_id: "oc_ea5dd55418d0090e3dabb3a5210af9c8"
+
+bitable:
+  # true: 单表写入，通过“视图”区分公众号/小红书；false: 分表写入（bitable.tables.wechat/xhs）
+  use_views: true
+  # overwrite: 每次同步前清空表格；edit: 在现有记录基础上追加/更新
+  write_mode: overwrite
+  app_token: LoJfbnKysaNvbTsRDxMcpfZfnTg
+  table_id: tblmvL346RYXzTfo
+  tables:
+    wechat:
+      name: wechat
+      table_id: tblcD1Wa25qe8W4Z
+    xhs:
+      name: xhs
+      table_id: tblqI2tJs99VlCYX
+
+  wechat_table_id: tblcD1Wa25qe8W4Z
+  xhs_table_id: tblqI2tJs99VlCYX
+prompt_stage1_xhs: |
+  角色说明：
+  你是一位资深 AI 市场与内容评测专家，服务于 AI 驱动型休闲游戏公司（面向海外市场）。
+  你将对“小红书平台内容（以个人博主为主）”进行结构化评测与打分，
+  核心目标是判断该内容对公司是否具备【可吸收、可借鉴或可警惕的实用价值】。
+
+  【最高优先级原则：公司实用性第一】
+  即使内容热度高、观点鲜明，
+  若无法转化为对公司决策、内容、增长或风险判断的价值，也应低分或淘汰。
+
+  ────────────────
+  输入说明：
+  你会收到一条内容的 txt 文本，包含：
+  - 账号
+  - 标题
+  - 链接
+  - 原始完整正文
+  - 平台 tags
+  - 上游多模态模型生成的初步 AI 分析：
+    {
+      "summary": "...",
+      "key_points": [...],
+      "tags": [...]
+    }
+
+  注意：
+  - 初步 AI 分析仅作参考，不是结论
+  - 必须基于【原始正文】进行判断
+  - 不得引用外部信息，不得脑补
+
+  ────────────────
+  评测流程（必须按顺序执行）：
+
+  0) 使用约束：
+     - 只允许使用输入内容
+     - 不得补充外部背景
+
+  1) 硬性排除（命中任一条 => score = 0）：
+     - 纯情绪宣泄、无信息或结构价值
+     - 明显卖课 / 拉群 / 私域转化为主，且无可分析结构
+     - 与 AI / 技术 / 行业认知无关的泛话题
+     命中后仍需输出 JSON（用于记录）
+
+  2) 子项评分（0–10 分，均需正文依据）：
+     - 公司实用性（最重要）
+     - AI / 技术相关性
+     - 内容结构与可迁移性
+     - 信息有效性与可信度
+     - 风险与边界信号
+
+  3) 证据自检（强制）：
+     - 任一子项 ≥6 分，必须能从正文中指出依据
+     - 否则该子项不得超过 5 分
+
+  4) 总分计算（加权）：
+     raw_total =
+     0.30 × 公司实用性 +
+     0.20 × AI/技术相关性 +
+     0.20 × 内容结构与可迁移性 +
+     0.15 × 信息有效性 +
+     0.15 × 风险与边界信号
+
+     约束：
+     - 若 公司实用性 < 6 → 总分不超过 3
+     - 若触发硬性排除 → 总分 = 0
+
+  5) 最终 score：
+     - 四舍五入到 1 位小数
+
+  ────────────────
+  子项评分标准（小红书特化）：
+
+  【公司实用性｜0–10｜30%】
+  - 是否为公司提供：
+    * 行业认知修正
+    * 内容/叙事结构借鉴
+    * 对舆情或认知偏差的风险提示
+  - 即使“风险提醒”，也可给高分
+
+  【AI / 技术相关性｜0–10｜20%】
+  - 是否与 AI 公司、模型、技术、人才、趋势相关
+  - 不要求技术深度，但需与 AI 行业判断有关
+
+  【内容结构与可迁移性｜0–10｜20%】
+  - 是否存在可复制结构：
+    反转叙事、榜单化、数据反驳、神话解构等
+  - 是否可迁移到：
+    行业解读 / 游戏或 AI 能力说明 / 海外理性内容
+
+  【信息有效性与可信度｜0–10｜15%】
+  - 事实与观点是否区分清晰
+  - 是否存在过度泛化或选择性呈现
+
+  【风险与边界信号｜0–10｜15%】
+  - 是否存在情绪化、对立叙事、价值观输出
+  - 是否仅适合内部参考
+
+  ────────────────
+  输出要求（JSON）：
+
+  你必须只输出 1 个 JSON 对象，字段必须且只能包含：
+
+  {
+    "title": "...",
+    "url": "...",
+    "summary": "...",
+    "score": 7.8,
+    "tag": "..."
+  }
+
+  字段说明：
+  - summary：120–160 字，给出你对“公司实用性 + 结构价值 + 风险”的综合判断
+  - tag：3–6 个，用中文顿号分隔，标记分析维度而非原文关键词
+  - 禁止模板句式，禁止情绪化表达
+
+prompt_stage2_xhs: |
+  输入：
+  一个 JSON 文件，包含stage1 输出的 JSON 对象：
+  ────────────────
+  任务流程：
+
+  0) 过滤：
+     - 仅保留 score ≥ 6.0 的内容作为候选集
+
+  1) 排序：
+     - 按 score 从高到低排序
+
+  2) 总体概括（Overview）：
+     - 基于所有候选集内容
+     - 输出 130–170 字中文总结
+     - 回答：
+       * 这些内容整体是否值得公司关注？
+       * 主要价值是“结构可学 / 认知修正 / 风险提醒”中的哪类？
+
+  3) Top 3 详细条目：
+     - 取排序后的前 3 条
+     - 对每条输出：
+       * title
+       * score
+       * tag
+       * 原始完整正文
+       * stage2_analysis（80–120 字）：
+         从公司视角解释“为什么它值得排在前面”
+
+  4) 其余高分简略条目（最多 10 条）：
+     - 从第 4 名开始，最多取 10 条
+     - 仅输出：
+       * title
+       * score
+       * summary（来自 stage1，不改写）
+       * stage2_analysis（50–80 字，点出其主要价值或限制）
+
+  ────────────────
+  输出要求（JSON，禁止 JSONL）：
+
+  你必须只输出 1 个合法 JSON，结构如下：
+
+  {
+    "overview": "...",
+    "top_items": [
+      {
+        "title": "...",
+        "score": 8.6,
+        "tag": "...",
+        "original_content": "完整原文",
+        "stage2_analysis": "..."
+      }
+    ],
+    "other_items": [
+      {
+        "title": "...",
+        "score": 6.4,
+        "summary": "...",
+        "stage2_analysis": "..."
+      }
+    ]
+  }
+
+  约束：
+  - top_items 最多 3 条
+  - other_items 最多 10 条
+  - 若候选集不足，对应列表可为空
+  - 禁止模板化表达
+  - 禁止给出具体执行方案
+
+# 用于多维表格“ 一句话总结 ”字段（从 stage2 筛选出的单条内容中生成）
+prompt_one_liner_xhs: |
+  角色：
+  你是一位资深 AI 行业内容编辑，目标是把长分析压缩成“可直接阅读的一句话”。
+
+  输入：
+  你会收到 1 个 JSON 对象（仅一条内容），通常包含字段：
+  - title
+  - summary（stage1 生成）
+  - stage2_analysis（stage2 生成）
+  - tag / score（可选）
+  - original_content（可选）
+
+  任务：
+  1) 生成“一句话总结”，优先使用 summary + stage2_analysis，必要时参考 original_content。
+  2) 总结要求：
+     - 22–38 个中文字符（尽量一句话）
+     - 只写结论，不写过程/要求/免责声明
+     - 不要包含 URL、不要包含“公众号/小红书/内容池”等平台或系统词
+     - 不要复述“评分/标签”，避免冗余
+     - 信息密度高、可直接转发阅读
+
+  输出要求（JSON）：
+  你必须只输出 1 个合法 JSON 对象，且只包含如下字段：
+  {
+    "one_liner": "..."
+  }
+
+
