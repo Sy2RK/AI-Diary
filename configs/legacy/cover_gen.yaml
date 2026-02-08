@@ -1,0 +1,27 @@
+wanx:
+  api_key: ''
+  sync_base_url: https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation
+  async_base_url: https://dashscope.aliyuncs.com/api/v1/services/aigc/image-generation/generation
+  model: wan2.6-t2i
+  size: 1280*1280
+  n: 1
+  negative_prompt: ''
+  prompt_extend: true
+  watermark: false
+  async_mode: true
+  poll_interval_sec: 5.0
+  timeout_sec: 300.0
+prompt:
+  template: '为下面内容生成一张“总结性封面图”，用于资讯封面：
+
+    - 要求准确表达主题与核心信息
+
+    - 尽量少文字（可不写字），多用图形/符号/场景隐喻
+
+    - 画面风格：现代、简洁、有科技感，适合海外移动端游戏团队阅读的资讯封面
+
+    - 内容：{summary}'
+output:
+  dir_name: covers
+  ext: .png
+  force: false

@@ -2,16 +2,16 @@ import argparse
 import sys
 from pathlib import Path
 
+root = Path(__file__).resolve().parent.parent
+if str(root) not in sys.path:
+    sys.path.insert(0, str(root))
+
 from Tools.feishu_utils import get_tenant_access_token, load_feishu_app, upload_image
 
 
 def main() -> int:
-    root = Path(__file__).resolve().parent.parent
-    if str(root) not in sys.path:
-        sys.path.insert(0, str(root))
-
     parser = argparse.ArgumentParser(description="Upload local image to Feishu and print image_key")
-    parser.add_argument("-c", "--config", default="rednotes.yaml")
+    parser.add_argument("-c", "--config", default="configs/config.yaml", help="配置入口（统一配置或 legacy rednotes.yaml）")
     parser.add_argument("-i", "--image", required=True, help="Local image path")
     args = parser.parse_args()
 

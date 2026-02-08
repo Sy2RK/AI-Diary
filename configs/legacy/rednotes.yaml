@@ -1,0 +1,138 @@
+since: '2026-02-01'
+maxcrawl: 20
+interval_sec: 5.0
+accounts:
+- name: 赛博禅心
+  url: https://www.xiaohongshu.com/user/profile/5b6bee5a6b58b7037ebad058
+- name: AI异类弗兰克
+  url: https://www.xiaohongshu.com/user/profile/5ec66abd0000000001006a8a
+- name: AI信息Gap
+  url: https://www.xiaohongshu.com/user/profile/65bd9b30000000000d01ce9e
+- name: 沃垠AI
+  url: https://www.xiaohongshu.com/user/profile/614c5d3a0000000002026594
+- name: 赛博自由老爹
+  url: https://www.xiaohongshu.com/user/profile/66d6b672000000000d026b71
+- name: 晓白和林亦
+  url: https://www.xiaohongshu.com/user/profile/61571bb00000000002023a6d
+- name: Super Winnie
+  url: https://www.xiaohongshu.com/user/profile/5da29e450000000001007fae
+- name: 朋克周
+  url: https://www.xiaohongshu.com/user/profile/65f18f73000000000500d56f
+- name: 蜗牛的科技笔记
+  url: https://www.xiaohongshu.com/user/profile/5faedce8000000000101c8a3
+- name: 小盖
+  url: https://www.xiaohongshu.com/user/profile/6720c690000000001c01b883
+- name: 点点AI
+  url: https://www.xiaohongshu.com/user/profile/6183ecf0000000001000a284
+- name: 兮兮的AI实战笔记
+  url: https://www.xiaohongshu.com/user/profile/61da7fa40000000010004948
+- name: Minko的AI魔法屋
+  url: https://www.xiaohongshu.com/user/profile/65fd5a73000000000600cf47
+- name: AI红发魔女
+  url: https://www.xiaohongshu.com/user/profile/6166b66a0000000002027a1d
+- name: 设计师大东（教程版）
+  url: https://www.xiaohongshu.com/user/profile/5ee07eb7000000000100481b
+qwen:
+  api_key: sk-fa546040e339425d9164bf43ae05501b
+  base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  model: qwen3-vl-plus
+  timeout_sec: 120
+  enable_thinking: true
+feishu:
+  app_id: cli_a9f8b4203eb8dcca
+  app_secret: aViEyBopvecfzOnKICvb3elkWKTeBefO
+  receive_id_type: chat_id
+  receive_id: oc_ea5dd55418d0090e3dabb3a5210af9c8
+bitable:
+  use_views: true
+  write_mode: overwrite
+  app_token: LoJfbnKysaNvbTsRDxMcpfZfnTg
+  table_id: tblmvL346RYXzTfo
+  tables:
+    wechat:
+      name: wechat
+      table_id: tblcD1Wa25qe8W4Z
+    xhs:
+      name: xhs
+      table_id: tblqI2tJs99VlCYX
+  wechat_table_id: tblcD1Wa25qe8W4Z
+  xhs_table_id: tblqI2tJs99VlCYX
+prompt_stage1_xhs: "角色说明：\n你是一位资深 AI 市场与内容评测专家，服务于 AI 驱动型休闲游戏公司（面向海外市场）。\n你将对“小红书平台内容（以个人博主为主）”进行结构化评测与打分，\n\
+  核心目标是判断该内容对公司是否具备【可吸收、可借鉴或可警惕的实用价值】。\n\n【最高优先级原则：公司实用性第一】\n即使内容热度高、观点鲜明，\n若无法转化为对公司决策、内容、增长或风险判断的价值，也应低分或淘汰。\n\
+  \n────────────────\n输入说明：\n你会收到一条内容的 txt 文本，包含：\n- 账号\n- 标题\n- 链接\n- 原始完整正文\n- 平台\
+  \ tags\n- 上游多模态模型生成的初步 AI 分析：\n  {\n    \"summary\": \"...\",\n    \"key_points\"\
+  : [...],\n    \"tags\": [...]\n  }\n\n注意：\n- 初步 AI 分析仅作参考，不是结论\n- 必须基于【原始正文】进行判断\n\
+  - 不得引用外部信息，不得脑补\n\n────────────────\n评测流程（必须按顺序执行）：\n\n0) 使用约束：\n   - 只允许使用输入内容\n\
+  \   - 不得补充外部背景\n\n1) 硬性排除（命中任一条 => score = 0）：\n   - 纯情绪宣泄、无信息或结构价值\n   - 明显卖课 /\
+  \ 拉群 / 私域转化为主，且无可分析结构\n   - 与 AI / 技术 / 行业认知无关的泛话题\n   命中后仍需输出 JSON（用于记录）\n\n2)\
+  \ 子项评分（0–10 分，均需正文依据）：\n   - 公司实用性（最重要）\n   - AI / 技术相关性\n   - 内容结构与可迁移性\n   - 信息有效性与可信度\n\
+  \   - 风险与边界信号\n\n3) 证据自检（强制）：\n   - 任一子项 ≥6 分，必须能从正文中指出依据\n   - 否则该子项不得超过 5 分\n\n\
+  4) 总分计算（加权）：\n   raw_total =\n   0.30 × 公司实用性 +\n   0.20 × AI/技术相关性 +\n   0.20 ×\
+  \ 内容结构与可迁移性 +\n   0.15 × 信息有效性 +\n   0.15 × 风险与边界信号\n\n   约束：\n   - 若 公司实用性 < 6\
+  \ → 总分不超过 3\n   - 若触发硬性排除 → 总分 = 0\n\n5) 最终 score：\n   - 四舍五入到 1 位小数\n\n────────────────\n\
+  子项评分标准（小红书特化）：\n\n【公司实用性｜0–10｜30%】\n- 是否为公司提供：\n  * 行业认知修正\n  * 内容/叙事结构借鉴\n  * 对舆情或认知偏差的风险提示\n\
+  - 即使“风险提醒”，也可给高分\n\n【AI / 技术相关性｜0–10｜20%】\n- 是否与 AI 公司、模型、技术、人才、趋势相关\n- 不要求技术深度，但需与\
+  \ AI 行业判断有关\n\n【内容结构与可迁移性｜0–10｜20%】\n- 是否存在可复制结构：\n  反转叙事、榜单化、数据反驳、神话解构等\n- 是否可迁移到：\n\
+  \  行业解读 / 游戏或 AI 能力说明 / 海外理性内容\n\n【信息有效性与可信度｜0–10｜15%】\n- 事实与观点是否区分清晰\n- 是否存在过度泛化或选择性呈现\n\
+  \n【风险与边界信号｜0–10｜15%】\n- 是否存在情绪化、对立叙事、价值观输出\n- 是否仅适合内部参考\n\n────────────────\n输出要求（JSON）：\n\
+  \n你必须只输出 1 个 JSON 对象，字段必须且只能包含：\n\n{\n  \"title\": \"...\",\n  \"url\": \"...\"\
+  ,\n  \"summary\": \"...\",\n  \"score\": 7.8,\n  \"tag\": \"...\"\n}\n\n字段说明：\n\
+  - summary：120–160 字，给出你对“公司实用性 + 结构价值 + 风险”的综合判断\n- tag：3–6 个，用中文顿号分隔，标记分析维度而非原文关键词\n\
+  - 禁止模板句式，禁止情绪化表达"
+prompt_stage2_xhs: "输入：\n一个 JSON 文件，包含stage1 输出的 JSON 对象：\n────────────────\n任务流程：\n\
+  \n0) 过滤：\n   - 仅保留 score ≥ 6.0 的内容作为候选集\n\n1) 排序：\n   - 按 score 从高到低排序\n\n2) 总体概括（Overview）：\n\
+  \   - 基于所有候选集内容\n   - 输出 130–170 字中文总结\n   - 回答：\n     * 这些内容整体是否值得公司关注？\n     *\
+  \ 主要价值是“结构可学 / 认知修正 / 风险提醒”中的哪类？\n\n3) Top 3 详细条目：\n   - 取排序后的前 3 条\n   - 对每条输出：\n\
+  \     * title\n     * score\n     * tag\n     * 原始完整正文\n     * stage2_analysis（80–120\
+  \ 字）：\n       从公司视角解释“为什么它值得排在前面”\n\n4) 其余高分简略条目（最多 10 条）：\n   - 从第 4 名开始，最多取 10\
+  \ 条\n   - 仅输出：\n     * title\n     * score\n     * summary（来自 stage1，不改写）\n    \
+  \ * stage2_analysis（50–80 字，点出其主要价值或限制）\n\n────────────────\n输出要求（JSON，禁止 JSONL）：\n\
+  \n你必须只输出 1 个合法 JSON，结构如下：\n\n{\n  \"overview\": \"...\",\n  \"top_items\": [\n \
+  \   {\n      \"title\": \"...\",\n      \"score\": 8.6,\n      \"tag\": \"...\"\
+  ,\n      \"original_content\": \"完整原文\",\n      \"stage2_analysis\": \"...\"\n \
+  \   }\n  ],\n  \"other_items\": [\n    {\n      \"title\": \"...\",\n      \"score\"\
+  : 6.4,\n      \"summary\": \"...\",\n      \"stage2_analysis\": \"...\"\n    }\n\
+  \  ]\n}\n\n约束：\n- top_items 最多 3 条\n- other_items 最多 10 条\n- 若候选集不足，对应列表可为空\n- 禁止模板化表达\n\
+  - 禁止给出具体执行方案"
+prompt_bitable_one_liner: '你是一名内容编辑，需要把多条内容压缩为“可读的一句话总结”，用于写入飞书多维表格。
+
+
+  输入：一个 JSON 数组，每个元素包含：
+
+  - key：唯一键
+
+  - title：标题
+
+  - summary：已有摘要/二次分析（可能较长）
+
+
+  输出要求（必须严格遵守）：
+
+  - 只输出 1 个 JSON 数组，数组长度与输入一致
+
+  - 每个元素必须是：{"key": "...", "one_liner": "..."}
+
+  - one_liner：中文 18–40 字，1 句话，不要换行，不要使用 URL，不要使用“根据以上内容”等套话，不要列点
+
+  - 信息结构：价值判断 + 主要信息点 + 风险/限制（如有）'
+prompt_bitable_one_liner_analysis: '你是一位服务于面向海外市场的移动端游戏公司的内容分析师，目标是把长分析压缩成“可直接阅读的一句话”。
+
+
+  输入：一个 JSON 数组，每个元素包含：
+
+  - key：唯一键
+
+  - title：标题
+
+  - summary：已有摘要/二次分析（可能较长）
+
+
+  输出要求（必须严格遵守）：
+
+  - 只输出 1 个 JSON 数组，数组长度与输入一致
+
+  - 每个元素必须是：{"key": "...", "one_liner": "..."}
+
+  - one_liner：中文 24–60 字，1 句话，不要换行，不要使用 URL，不要套话，不要列点
+
+  - 必须包含两部分：①核心要点总结；②对公司业务的潜在价值（提效/迁移/市场等）'

@@ -1,0 +1,11 @@
+app:
+  profile: prod
+
+xhs:
+  maxcrawl: 50
+  playwright:
+    headless: true
+
+bitable:
+  write_mode: edit
+

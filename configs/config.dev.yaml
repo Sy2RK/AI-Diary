@@ -1,0 +1,11 @@
+app:
+  profile: dev
+
+xhs:
+  maxcrawl: 20
+  playwright:
+    headless: false
+
+bitable:
+  write_mode: overwrite
+

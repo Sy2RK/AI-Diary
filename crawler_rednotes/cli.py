@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .config_rednotes import RednotesConfig, load_rednotes_config
+from crawler_common.config_entry import DEFAULT_PROJECT_CONFIG, resolve_legacy_config_for_cli
 from .result_writer import create_run_dir, save_notes
 from .xhs_client import BrowserXHSClient, MockXHSClient
 from .yaml_patch import add_account as yaml_add_account
@@ -66,13 +67,12 @@ def _parse_publish_time(value: str) -> Optional[datetime]:
 
 
 def _resolve_default_config_path() -> str:
-    # Crawler/rednotes.yaml (repo root under Crawler/)
-    return str(Path(__file__).resolve().parent.parent / "rednotes.yaml")
+    return DEFAULT_PROJECT_CONFIG
 
 
 def _print_accounts(accounts) -> None:
     if not accounts:
-        print("No accounts in rednotes.yaml")
+        print("No accounts in config")
         return
     for idx, item in enumerate(accounts, start=1):
         name = str(item.get("name") or "").strip()
@@ -84,16 +84,19 @@ def main(_unused: object = None) -> int:
     parser = argparse.ArgumentParser(description="Xiaohongshu (Rednotes) crawler - terminal mode")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    p_add = sub.add_parser("add", help="Add account profile (name + url) to rednotes.yaml")
+    p_add = sub.add_parser("add", help="Add account profile (name + url) to config")
     p_add.add_argument("-c", "--config", default=_resolve_default_config_path())
+    p_add.add_argument("--profile", default="", help="配置环境(profile)，仅统一配置生效")
     p_add.add_argument("url")
     p_add.add_argument("name", nargs="?", default="")
 
-    p_del = sub.add_parser("delete", help="Delete account profile by index from rednotes.yaml")
+    p_del = sub.add_parser("delete", help="Delete account profile by index from config")
     p_del.add_argument("-c", "--config", default=_resolve_default_config_path())
+    p_del.add_argument("--profile", default="", help="配置环境(profile)，仅统一配置生效")
 
-    p_list = sub.add_parser("list", help="List account profiles in rednotes.yaml")
+    p_list = sub.add_parser("list", help="List account profiles in config")
     p_list.add_argument("-c", "--config", default=_resolve_default_config_path())
+    p_list.add_argument("--profile", default="", help="配置环境(profile)，仅统一配置生效")
 
     p_crawl = sub.add_parser("crawl", help="Crawl a profile and save text/images to outputs/")
     p_crawl.add_argument("profile_url", help="Xiaohongshu profile url (must include /user/profile/<id>)")
@@ -113,8 +116,9 @@ def main(_unused: object = None) -> int:
         help="Outputs root folder (default: outputs/rednotes)",
     )
 
-    p_crawl_all = sub.add_parser("crawl-all", help="Crawl all profiles in rednotes.yaml (ordered)")
+    p_crawl_all = sub.add_parser("crawl-all", help="Crawl all profiles in config (ordered)")
     p_crawl_all.add_argument("-c", "--config", default=_resolve_default_config_path())
+    p_crawl_all.add_argument("--profile", default="", help="配置环境(profile)，仅统一配置生效")
     p_crawl_all.add_argument(
         "--storage-state",
         default=_resolve_default_storage_state(),
@@ -134,6 +138,12 @@ def main(_unused: object = None) -> int:
     )
 
     args = parser.parse_args()
+    if hasattr(args, "config"):
+        try:
+            args.config = resolve_legacy_config_for_cli(getattr(args, "config", ""), kind="rednotes", profile=getattr(args, "profile", ""))
+        except Exception as exc:  # noqa: BLE001
+            print(f"Config resolve failed: {exc}", file=sys.stderr)
+            return 2
 
     if args.cmd == "add":
         url = str(args.url).strip()
@@ -273,7 +283,7 @@ def main(_unused: object = None) -> int:
         try:
             since_dt = _parse_since(cfg.since)
         except ValueError:
-            print("Invalid `since` format in rednotes.yaml, expected YYYY-MM-DD", file=sys.stderr)
+            print("Invalid `since` format in config, expected YYYY-MM-DD", file=sys.stderr)
             return 2
 
         all_notes: List[Dict[str, Any]] = []

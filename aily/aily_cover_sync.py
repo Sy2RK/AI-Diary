@@ -65,6 +65,17 @@ def _coerce_bool(val: Any) -> bool:
     return str(val).strip().lower() in ("1", "true", "yes", "y", "on")
 
 
+def _load_bitable_sync_module():
+    try:
+        from scripts.integrations import bitable_sync as mod  # type: ignore
+
+        return mod
+    except Exception:
+        import bitable_sync as mod  # type: ignore
+
+        return mod
+
+
 def _read_yaml(path: str) -> dict:
     p = Path(path)
     if not p.exists():
@@ -215,9 +226,83 @@ def _extract_image_urls_from_mdx(text: str) -> List[str]:
     urls = [m.group(0) for m in _URL_RE.finditer(s)]
     out: List[str] = []
     seen: set[str] = set()
-    for u in urls:
-        if not _IMG_EXT_RE.search(u):
+    image_like = [u for u in urls if _IMG_EXT_RE.search(u)]
+    candidates = image_like or urls
+    for u in candidates:
+        if u in seen:
             continue
+        seen.add(u)
+        out.append(u)
+    return out
+
+
+def _extract_urls_from_any(payload: Any) -> List[str]:
+    out: List[str] = []
+    seen: set[str] = set()
+    likely_url_keys = {"url", "download_url", "downloadurl", "file_url", "fileurl", "image", "image_url", "imageurl"}
+
+    def _add(u: str) -> None:
+        s = str(u or "").strip()
+        if not s or not s.lower().startswith(("http://", "https://")):
+            return
+        if s in seen:
+            return
+        seen.add(s)
+        out.append(s)
+
+    def _walk(v: Any) -> None:
+        if isinstance(v, dict):
+            for k, vv in v.items():
+                if isinstance(vv, str) and str(k).strip().lower() in likely_url_keys:
+                    _add(vv)
+                _walk(vv)
+            return
+        if isinstance(v, list):
+            for it in v:
+                _walk(it)
+            return
+        if isinstance(v, str):
+            for m in _URL_RE.finditer(v):
+                _add(m.group(0))
+
+    _walk(payload)
+    return out
+
+
+def _normalize_file_ids(value: Any) -> List[str]:
+    if isinstance(value, str):
+        s = value.strip()
+        return [s] if s else []
+    if isinstance(value, list):
+        out: List[str] = []
+        for it in value:
+            s = str(it or "").strip()
+            if s:
+                out.append(s)
+        return out
+    return []
+
+
+def _extract_image_urls_from_msg(msg: Dict[str, Any]) -> List[str]:
+    content_raw = msg.get("content")
+    if isinstance(content_raw, str):
+        mdx = content_raw
+    else:
+        try:
+            mdx = json.dumps(content_raw, ensure_ascii=False)
+        except Exception:
+            mdx = str(content_raw or "")
+    urls = _extract_image_urls_from_mdx(mdx)
+    if urls:
+        return urls
+    return _extract_urls_from_any(msg)
+
+
+def _extract_image_urls_from_file_meta(meta: Dict[str, Any]) -> List[str]:
+    urls = _extract_urls_from_any(meta)
+    out: List[str] = []
+    seen: set[str] = set()
+    for u in urls:
         if u in seen:
             continue
         seen.add(u)
@@ -270,13 +355,12 @@ def aily_generate_cover_image_url(
     messages.reverse()
 
     for msg in messages:
-        content = str(msg.get("content") or "").strip()
-        urls = _extract_image_urls_from_mdx(content)
+        urls = _extract_image_urls_from_msg(msg)
         if urls:
             return session_id, run_id, urls[0]
         # Fallback to file_ids if present
-        file_ids = msg.get("file_ids") or msg.get("fileIds") or []
-        if isinstance(file_ids, list) and file_ids:
+        file_ids = _normalize_file_ids(msg.get("file_ids") or msg.get("fileIds") or [])
+        if file_ids:
             # We only have file meta from get_file; URL retrieval is not documented here.
             if verbose:
                 print(f"[aily] message has file_ids but no image urls: {file_ids}")
@@ -285,11 +369,15 @@ def aily_generate_cover_image_url(
                 fid2 = str(fid or "").strip()
                 if not fid2:
                     continue
-                meta = client.get_file(fid2)
-                for k in ("url", "download_url", "downloadUrl"):
-                    u = str(meta.get(k) or "").strip()
-                    if u:
-                        return session_id, run_id, u
+                try:
+                    meta = client.get_file(fid2)
+                except Exception as exc:  # noqa: BLE001
+                    if verbose:
+                        print(f"[aily] get_file failed file_id={fid2}: {exc}")
+                    continue
+                meta_urls = _extract_image_urls_from_file_meta(meta)
+                if meta_urls:
+                    return session_id, run_id, meta_urls[0]
 
     raise RuntimeError("No image url found in Aily assistant messages")
 
@@ -315,7 +403,7 @@ def _ensure_cover_field(
     app_token: str,
     tenant_token: str,
 ) -> None:
-    import bitable_sync
+    bitable_sync = _load_bitable_sync_module()
 
     client = bitable_sync.BitableClient(token=tenant_token, app_token=app_token, table_id=table_id)
     client.ensure_fields(
@@ -335,7 +423,7 @@ def _upsert_cover_by_unique_key(
     unique_key: str,
     file_token: str,
 ) -> None:
-    import bitable_sync
+    bitable_sync = _load_bitable_sync_module()
 
     client = bitable_sync.BitableClient(token=tenant_token, app_token=app_token, table_id=table_id)
     idx = client.build_unique_key_index()
@@ -354,10 +442,10 @@ def _upsert_cover_by_unique_key(
 
 def _load_one_liners_for_records(config_path: str, records: List[Any]) -> Dict[str, str]:
     # Use the same one-liner generator as Bitable sync.
-    from bitable_sync import _generate_one_liners_qwen
+    bitable_sync = _load_bitable_sync_module()
 
     items = [{"key": r.unique_key, "title": r.title, "summary": (r.summary or "").strip()} for r in records]
-    return _generate_one_liners_qwen(config_path=config_path, items=items, model="qwen3-max")
+    return bitable_sync._generate_one_liners_qwen(config_path=config_path, items=items, model="qwen3-max")
 
 
 def _resolve_bitable_table(
@@ -369,7 +457,7 @@ def _resolve_bitable_table(
     """
     Returns (app_token, table_id).
     """
-    import bitable_sync
+    bitable_sync = _load_bitable_sync_module()
 
     _app_id, _app_secret, app_token, default_table_id, use_views, _write_mode = bitable_sync._load_bitable_config(config_path)
     if use_views:
@@ -393,7 +481,7 @@ def sync_covers_xhs(
     limit: int,
     verbose: bool,
 ) -> int:
-    import bitable_sync
+    bitable_sync = _load_bitable_sync_module()
 
     cfg = load_cover_sync_config(aily_cfg_path)
     client = AilyClient(cfg.aily)
@@ -459,7 +547,7 @@ def sync_covers_wechat(
     limit: int,
     verbose: bool,
 ) -> int:
-    import bitable_sync
+    bitable_sync = _load_bitable_sync_module()
 
     cfg = load_cover_sync_config(aily_cfg_path)
     client = AilyClient(cfg.aily)
@@ -522,7 +610,8 @@ def main() -> int:
 
     p_xhs = sub.add_parser("xhs", help="XHS: generate cover for outputs/rednotes/<run> and write to Bitable")
     p_xhs.add_argument("--run-dir", required=True, help="outputs/rednotes/<run> folder")
-    p_xhs.add_argument("-c", "--config", default="rednotes.yaml", help="Project config for Qwen+Bitable")
+    p_xhs.add_argument("-c", "--config", default="configs/config.yaml", help="配置入口（统一配置或 legacy rednotes.yaml）")
+    p_xhs.add_argument("--profile", default="", help="配置环境(profile)，仅统一配置生效")
     p_xhs.add_argument("--aily-config", default="aily_cover.yaml")
     p_xhs.add_argument("--force", action="store_true")
     p_xhs.add_argument("--limit", type=int, default=0)
@@ -530,7 +619,8 @@ def main() -> int:
 
     p_wc = sub.add_parser("wechat", help="WeChat: generate cover for outputs/wechat/<run> stage2 and write to Bitable")
     p_wc.add_argument("--stage2", required=True, help="outputs/wechat/<run>/*_stage2.json")
-    p_wc.add_argument("-c", "--config", default="rednotes.yaml", help="Project config for Qwen+Bitable")
+    p_wc.add_argument("-c", "--config", default="configs/config.yaml", help="配置入口（统一配置或 legacy rednotes.yaml）")
+    p_wc.add_argument("--profile", default="", help="配置环境(profile)，仅统一配置生效")
     p_wc.add_argument("--aily-config", default="aily_cover.yaml")
     p_wc.add_argument("--force", action="store_true")
     p_wc.add_argument("--limit", type=int, default=0)
@@ -539,10 +629,13 @@ def main() -> int:
     args = parser.parse_args()
     try:
         _ensure_repo_root_on_path()
+        from crawler_common.config_entry import resolve_legacy_config_for_cli
+
+        resolved_config = resolve_legacy_config_for_cli(args.config, kind="rednotes", profile=getattr(args, "profile", ""))
         if args.cmd == "xhs":
             n = sync_covers_xhs(
                 run_dir=args.run_dir,
-                config_path=args.config,
+                config_path=resolved_config,
                 aily_cfg_path=args.aily_config,
                 force=bool(args.force),
                 limit=int(args.limit or 0),
@@ -553,7 +646,7 @@ def main() -> int:
         if args.cmd == "wechat":
             n = sync_covers_wechat(
                 stage2_path=args.stage2,
-                config_path=args.config,
+                config_path=resolved_config,
                 aily_cfg_path=args.aily_config,
                 force=bool(args.force),
                 limit=int(args.limit or 0),

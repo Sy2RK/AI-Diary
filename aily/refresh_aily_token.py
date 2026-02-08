@@ -29,20 +29,30 @@ def _resolve_path(p: str) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Fetch Feishu tenant_access_token and write into aily_cover.yaml.")
-    parser.add_argument("--project-config", default="rednotes.yaml", help="Project config containing feishu.app_id/app_secret")
+    parser.add_argument("--project-config", default="configs/config.yaml", help="配置入口（统一配置或 legacy rednotes.yaml）")
+    parser.add_argument("--profile", default="", help="配置环境(profile)，仅统一配置生效")
     parser.add_argument("--aily-config", default="aily_cover.yaml", help="Target aily_cover.yaml to patch")
     parser.add_argument("--print", dest="print_token", action="store_true", help="Print token to stdout")
     args = parser.parse_args()
 
     try:
         _ensure_repo_root_on_path()
+        from crawler_common.config_entry import resolve_legacy_config_for_cli
         from crawler_rednotes.config_rednotes import load_rednotes_config
         from crawler_rednotes.yaml_patch import set_scalar
     except Exception as exc:  # noqa: BLE001
         print(f"[refresh_aily_token] missing local modules: {exc}", file=sys.stderr)
         return 2
 
-    project_config_path = _resolve_path(args.project_config)
+    try:
+        project_config_path = resolve_legacy_config_for_cli(
+            _resolve_path(args.project_config),
+            kind="rednotes",
+            profile=args.profile,
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"[refresh_aily_token] config resolve failed: {exc}", file=sys.stderr)
+        return 2
     aily_config_path = _resolve_path(args.aily_config)
 
     cfg, _raw = load_rednotes_config(project_config_path)

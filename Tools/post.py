@@ -2,17 +2,17 @@ import argparse
 import sys
 from pathlib import Path
 
+root = Path(__file__).resolve().parent.parent
+if str(root) not in sys.path:
+    sys.path.insert(0, str(root))
+
 from Tools.feishu_utils import get_tenant_access_token, load_feishu_settings, send_post, upload_image
 
 
 def main() -> int:
-    root = Path(__file__).resolve().parent.parent
-    if str(root) not in sys.path:
-        sys.path.insert(0, str(root))
-
     parser = argparse.ArgumentParser(description="Send a rich post (text + optional image) to Feishu chat")
-    parser.add_argument("-c", "--config", default="rednotes.yaml")
-    parser.add_argument("--chat-id", default="", help="Override chat_id (default: rednotes.yaml feishu.receive_id)")
+    parser.add_argument("-c", "--config", default="configs/config.yaml", help="配置入口（统一配置或 legacy rednotes.yaml）")
+    parser.add_argument("--chat-id", default="", help="Override chat_id (default: config feishu.receive_id)")
     parser.add_argument("--title", default="📰 AI 日报")
     parser.add_argument("--text", required=True, help="Main text block")
     parser.add_argument("--image-path", default="", help="Local image path to upload and include")

@@ -18,6 +18,11 @@ env/
 /Include/
 /Lib/
 /Scripts/
+!/scripts/
+!/scripts/**
+/scripts/**/__pycache__/
+/scripts/**/*.pyc
+/scripts/**/*.pyc.*
 /pyvenv.cfg
 
 # Build / packaging
