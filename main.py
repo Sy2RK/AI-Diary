@@ -112,6 +112,7 @@ def _menu_wechat(project_config: str, profile: str) -> None:
         print("2) AI 分析公众号文章（仅分析）")
         print("3) 生成封面（仅生成封面）")
         print("4) 推送到飞书（仅推送）")
+        print("5) 推送到企业微信（仅推送）")
         print("0) 返回上一级")
         choice = _prompt("请选择", default="0")
 
@@ -172,6 +173,25 @@ def _menu_wechat(project_config: str, profile: str) -> None:
             print(f"退出码: {code}")
             continue
 
+        if choice == "5":
+            webhook = _prompt(
+                "企业微信 webhook（留空使用默认）",
+                default="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=fc05d213-206b-4ac2-922d-a3bb311f3c94",
+            ).strip()
+            if not webhook:
+                print("未填写 webhook，已取消。")
+                continue
+            outputs_root = _prompt("outputs 根目录", default="outputs").strip()
+            limit = _prompt("推送条数上限", default="10").strip()
+            args5 = ["wechat", "--webhook", webhook]
+            if outputs_root:
+                args5 += ["--outputs", outputs_root]
+            if limit.isdigit():
+                args5 += ["--limit", str(int(limit))]
+            code = _run_py(str(Path("scripts") / "integrations" / "wecom_sender.py"), args5)
+            print(f"退出码: {code}")
+            continue
+
         print("无效选项，请重试。")
 
 
@@ -183,7 +203,8 @@ def _menu_xhs(project_config: str, profile: str) -> None:
         print("3) 小红书AI分析（仅分析）")
         print("4) 生成封面（仅生成封面）")
         print("5) 推送到飞书（仅推送）")
-        print("6) TikHub API 抓取（仅抓取，不做Qwen分析）")
+        print("6) 推送到企业微信（仅推送）")
+        print("7) TikHub API 抓取（仅抓取，不做Qwen分析）")
         print("0) 返回上一级")
         choice = _prompt("请选择", default="0")
 
@@ -253,6 +274,25 @@ def _menu_xhs(project_config: str, profile: str) -> None:
             continue
 
         if choice == "6":
+            webhook = _prompt(
+                "企业微信 webhook（留空使用默认）",
+                default="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=fc05d213-206b-4ac2-922d-a3bb311f3c94",
+            ).strip()
+            if not webhook:
+                print("未填写 webhook，已取消。")
+                continue
+            outputs_root = _prompt("outputs 根目录", default="outputs").strip()
+            limit = _prompt("推送条数上限", default="10").strip()
+            args6 = ["xhs", "--webhook", webhook]
+            if outputs_root:
+                args6 += ["--outputs", outputs_root]
+            if limit.isdigit():
+                args6 += ["--limit", str(int(limit))]
+            code = _run_py(str(Path("scripts") / "integrations" / "wecom_sender.py"), args6)
+            print(f"退出码: {code}")
+            continue
+
+        if choice == "7":
             pcfg = _prompt("统一配置路径", default=project_config)
             prof = _prompt("配置环境(profile)", default=profile)
             api_key = _prompt("TikHub API Key（留空使用配置/环境变量）", default="")
@@ -275,8 +315,8 @@ def _menu_xhs(project_config: str, profile: str) -> None:
             if prof:
                 args4 += ["--profile", prof]
 
-            code4 = _run_py(str(Path("scripts") / "xhs" / "rednotes_api_tikhub.py"), args4)
-            print(f"退出码: {code4}")
+            code7 = _run_py(str(Path("scripts") / "xhs" / "rednotes_api_tikhub.py"), args4)
+            print(f"退出码: {code7}")
             continue
 
         print("无效选项，请重试。")
@@ -344,6 +384,69 @@ def _menu_bitable(project_config: str, profile: str) -> None:
         print("无效选项，请重试。")
 
 
+def _menu_web_export(project_config: str, profile: str) -> None:
+    while True:
+        print("\n=== Web Export ===")
+        print("1) 仅输出内容 (report_documents.json)")
+        print("2) 仅输出图片 (report_images.json)")
+        print("3) 内容 + 图片 + 匹配文件（一起生成）")
+        print("0) 返回上一级")
+        choice = _prompt("请选择", default="0")
+
+        if choice == "0":
+            return
+
+        date_key = _prompt("输出日期 (YYYY-MM-DD 或 YYYYMMDD，留空=最新)", default="").strip()
+        content_out = _prompt("内容输出路径（留空默认）", default="").strip()
+        images_out = _prompt("图片输出路径（留空默认）", default="").strip()
+        merged_out = _prompt("匹配输出路径（留空默认）", default="").strip()
+
+        def _run_content() -> None:
+            args = []
+            if content_out:
+                args += ["--output", content_out]
+            if date_key:
+                args += ["--date", date_key]
+            code = _run_py(str(Path("scripts") / "integrations" / "web_export.py"), args)
+            print(f"退出码: {code}")
+
+        def _run_images() -> None:
+            args = []
+            if images_out:
+                args += ["--output", images_out]
+            if date_key:
+                args += ["--date", date_key]
+            code = _run_py(str(Path("scripts") / "integrations" / "export_images_json.py"), args)
+            print(f"退出码: {code}")
+
+        def _run_merged() -> None:
+            args = []
+            if content_out:
+                args += ["--documents", content_out]
+            if images_out:
+                args += ["--images", images_out]
+            if merged_out:
+                args += ["--output", merged_out]
+            if date_key:
+                args += ["--date", date_key]
+            code = _run_py(str(Path("scripts") / "integrations" / "export_news_with_images_json.py"), args)
+            print(f"退出码: {code}")
+
+        if choice == "1":
+            _run_content()
+            continue
+        if choice == "2":
+            _run_images()
+            continue
+        if choice == "3":
+            _run_content()
+            _run_images()
+            _run_merged()
+            continue
+
+        print("无效选项，请重试。")
+
+
 def _run_interactive_cli(args: argparse.Namespace) -> int:
     _sync_unified_config(args.project_config, args.profile)
 
@@ -352,7 +455,8 @@ def _run_interactive_cli(args: argparse.Namespace) -> int:
         print("1) 微信公众号")
         print("2) 小红书")
         print("3) 多维表格")
-        print("4) 一键执行全部信息收集与分析（预留）")
+        print("4) Web Export")
+        print("5) 一键执行全部信息收集与分析（预留）")
         print("0) 退出")
         choice = _prompt("请选择", default="0")
 
@@ -368,6 +472,9 @@ def _run_interactive_cli(args: argparse.Namespace) -> int:
             _menu_bitable(project_config=args.project_config, profile=args.profile)
             continue
         if choice == "4":
+            _menu_web_export(project_config=args.project_config, profile=args.profile)
+            continue
+        if choice == "5":
             print("该功能暂未实现，后续会接入完整的一键链路。")
             continue
 

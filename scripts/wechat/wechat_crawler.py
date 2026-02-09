@@ -5,7 +5,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 import yaml
@@ -174,7 +174,7 @@ def fetch_articles(
     session: requests.Session,
     cfg: Dict[str, Any],
     fakeid: str,
-    since_ts: int | None,
+    since_ts: Optional[int],
     account_name: str,
 ) -> List[Dict[str, str]]:
     """
@@ -273,7 +273,7 @@ def write_json(articles: List[Dict[str, str]], json_path: str) -> None:
     path.write_text(json.dumps(articles, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def filter_articles_by_since(articles: List[Dict[str, str]], since_ts: int | None) -> List[Dict[str, str]]:
+def filter_articles_by_since(articles: List[Dict[str, str]], since_ts: Optional[int]) -> List[Dict[str, str]]:
     if since_ts is None:
         return articles
     filtered: List[Dict[str, str]] = []
@@ -288,7 +288,7 @@ def filter_articles_by_since(articles: List[Dict[str, str]], since_ts: int | Non
     return filtered
 
 
-def parse_since(since: str | None) -> int | None:
+def parse_since(since: Optional[str]) -> Optional[int]:
     if not since:
         return None
     try:

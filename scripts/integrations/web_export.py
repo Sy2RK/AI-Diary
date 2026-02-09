@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from datetime import datetime
@@ -68,6 +69,22 @@ def _truncate(text: str, max_len: int) -> str:
     if len(s) <= max_len:
         return s
     return s[: max_len - 1].rstrip() + "…"
+
+
+def _sha1(text: str) -> str:
+    return hashlib.sha1((text or "").encode("utf-8")).hexdigest()
+
+
+def _parse_wechat_source_id(url: str) -> str:
+    u = (url or "").strip()
+    if not u:
+        return ""
+    biz = re.search(r"(?:\\?|&)__biz=([^&]+)", u)
+    mid = re.search(r"(?:\\?|&)mid=(\\d+)", u)
+    idx = re.search(r"(?:\\?|&)idx=(\\d+)", u)
+    if biz and mid and idx:
+        return f"{biz.group(1)}_{mid.group(1)}_{idx.group(1)}"
+    return _sha1(u)
 
 
 def find_latest_wechat_stage2(outputs_root: Path = Path("outputs") / "wechat") -> Optional[Path]:
@@ -178,7 +195,7 @@ def find_latest_xhs_stage2_for_date(
     return _pick(same_date)
 
 
-def to_report_document_wechat(stage2_path: Path) -> Dict[str, Any]:
+def to_report_documents_wechat(stage2_path: Path) -> List[Dict[str, Any]]:
     data = _read_json(stage2_path)
     if not isinstance(data, list):
         raise ValueError("wechat stage2 must be a JSON array")
@@ -187,26 +204,21 @@ def to_report_document_wechat(stage2_path: Path) -> Dict[str, Any]:
     date = _fmt_date_from_run_name(run_dir.name)
     time = _fmt_time_from_mtime(stage2_path)
 
-    overall_summary = ""
     items = data
     if items and isinstance(items[0], dict) and "summary" in items[0] and "url" not in items[0]:
-        overall_summary = str(items[0].get("summary") or "").strip()
         items = items[1:]
 
-    lines: List[str] = []
-    if overall_summary:
-        lines.append("## 总览")
-        lines.append(overall_summary)
-        lines.append("")
-    lines.append("## 条目")
+    docs: List[Dict[str, Any]] = []
     for idx, it in enumerate([x for x in items if isinstance(x, dict)], start=1):
         title = str(it.get("title") or "").strip()
         url = str(it.get("url") or "").strip()
         summary = str(it.get("summary") or "").strip()
         score = it.get("score", None)
         tag_str = str(it.get("tag") or "").strip()
+        if not title:
+            continue
 
-        lines.append(f"### {idx}. {title}".rstrip())
+        lines: List[str] = [f"# {title}"]
         if score not in (None, ""):
             lines.append(f"**评分**：{score}")
         if tag_str:
@@ -215,23 +227,48 @@ def to_report_document_wechat(stage2_path: Path) -> Dict[str, Any]:
             lines.append(f"**摘要**：{summary}")
         if url:
             lines.append(f"**链接**：[[原文]]({url})")
-        lines.append("")
+        content = "\n".join([ln for ln in lines if ln is not None]).strip() + "\n"
+        unique_key = _parse_wechat_source_id(url) if url else _sha1(f"wechat:{title}:{idx}")
 
-    content = "\n".join([ln for ln in lines if ln is not None]).strip() + "\n"
+        docs.append(
+            {
+                "title": title,
+                "content": content,
+                "tags": _parse_tags(tag_str) or ["wechat", "公众号", "AI日报"],
+                "date": date,
+                "time": time,
+                "source": "wechat",
+                "summary": _truncate(summary, 140),
+                "meta": {
+                    "stage2_path": str(stage2_path),
+                    "url": url,
+                    "score": score,
+                    "rank": idx,
+                    "unique_key": unique_key,
+                },
+            }
+        )
+    return docs
 
-    return {
-        "title": f"微信公众号AI日报（{date}）" if date else "微信公众号AI日报",
-        "content": content,
-        "tags": ["wechat", "公众号", "AI日报"],
-        "date": date,
-        "time": time,
-        "source": "wechat",
-        "summary": _truncate(overall_summary or (items[0].get("summary") if items and isinstance(items[0], dict) else "") or "", 140),
-        "meta": {"stage2_path": str(stage2_path)},
-    }
+
+def _load_xhs_stage1_index(run_dir: Path) -> Dict[str, Dict[str, Any]]:
+    stage1_path = run_dir / "analysis" / "stage1.json"
+    if not stage1_path.exists():
+        return {}
+    data = _read_json(stage1_path)
+    if not isinstance(data, list):
+        return {}
+    out: Dict[str, Dict[str, Any]] = {}
+    for it in data:
+        if not isinstance(it, dict):
+            continue
+        title = str(it.get("title") or "").strip()
+        if title and title not in out:
+            out[title] = it
+    return out
 
 
-def to_report_document_xhs(stage2_path: Path) -> Dict[str, Any]:
+def to_report_documents_xhs(stage2_path: Path) -> List[Dict[str, Any]]:
     data = _read_json(stage2_path)
     if not isinstance(data, dict):
         raise ValueError("xhs stage2 must be a JSON object")
@@ -239,30 +276,35 @@ def to_report_document_xhs(stage2_path: Path) -> Dict[str, Any]:
     run_dir = stage2_path.parent.parent  # .../<run>/analysis/stage2.json
     date = _fmt_date_from_run_name(run_dir.name)
     time = _fmt_time_from_mtime(stage2_path)
+    stage1_index = _load_xhs_stage1_index(run_dir)
 
-    overview = str(data.get("overview") or "").strip()
     top_items = data.get("top_items") or []
     other_items = data.get("other_items") or []
 
-    lines: List[str] = []
-    if overview:
-        lines.append("## 总览")
-        lines.append(overview)
-        lines.append("")
-
+    docs: List[Dict[str, Any]] = []
+    rank = 0
     if isinstance(top_items, list) and top_items:
-        lines.append("## Top 3")
         for idx, it in enumerate([x for x in top_items if isinstance(x, dict)], start=1):
+            rank += 1
             title = str(it.get("title") or "").strip()
+            if not title:
+                continue
             score = it.get("score", None)
             tag_str = str(it.get("tag") or "").strip()
             original = str(it.get("original_content") or "").strip()
             analysis = str(it.get("stage2_analysis") or "").strip()
-            lines.append(f"### {idx}. {title}".rstrip())
+            stage1 = stage1_index.get(title) or {}
+            url = str(stage1.get("url") or it.get("url") or "").strip()
+            summary = str(stage1.get("summary") or "").strip()
+            note_id = str(stage1.get("note_id") or "").strip()
+
+            lines: List[str] = [f"# {title}"]
             if score not in (None, ""):
                 lines.append(f"**评分**：{score}")
             if tag_str:
                 lines.append(f"**标签**：{tag_str}")
+            if summary:
+                lines.append(f"**摘要**：{summary}")
             if original:
                 lines.append("")
                 lines.append("**原文（节选/整理）**：")
@@ -271,36 +313,76 @@ def to_report_document_xhs(stage2_path: Path) -> Dict[str, Any]:
                 lines.append("")
                 lines.append("**分析**：")
                 lines.append(analysis)
-            lines.append("")
+            if url:
+                lines.append("")
+                lines.append(f"**链接**：[[原文]]({url})")
+
+            unique_key = note_id or _sha1(url)
+            docs.append(
+                {
+                    "title": title,
+                    "content": "\n".join([ln for ln in lines if ln is not None]).strip() + "\n",
+                    "tags": _parse_tags(tag_str) or ["xhs", "小红书", "AI日报"],
+                    "date": date,
+                    "time": time,
+                    "source": "xhs",
+                    "summary": _truncate(analysis or summary or original, 140),
+                    "meta": {
+                        "stage2_path": str(stage2_path),
+                        "url": url,
+                        "score": score,
+                        "rank": rank,
+                        "bucket": "top_items",
+                        "unique_key": unique_key,
+                    },
+                }
+            )
 
     if isinstance(other_items, list) and other_items:
-        lines.append("## 其他高分")
         for idx, it in enumerate([x for x in other_items if isinstance(x, dict)], start=1):
+            rank += 1
             title = str(it.get("title") or "").strip()
+            if not title:
+                continue
             score = it.get("score", None)
             summary = str(it.get("summary") or "").strip()
             analysis = str(it.get("stage2_analysis") or "").strip()
-            lines.append(f"### {idx}. {title}".rstrip())
+            stage1 = stage1_index.get(title) or {}
+            url = str(stage1.get("url") or it.get("url") or "").strip()
+            note_id = str(stage1.get("note_id") or "").strip()
+
+            lines = [f"# {title}"]
             if score not in (None, ""):
                 lines.append(f"**评分**：{score}")
             if summary:
                 lines.append(f"**摘要**：{summary}")
             if analysis:
                 lines.append(f"**分析**：{analysis}")
-            lines.append("")
+            if url:
+                lines.append(f"**链接**：[[原文]]({url})")
 
-    content = "\n".join([ln for ln in lines if ln is not None]).strip() + "\n"
+            unique_key = note_id or _sha1(url)
+            docs.append(
+                {
+                    "title": title,
+                    "content": "\n".join([ln for ln in lines if ln is not None]).strip() + "\n",
+                    "tags": _parse_tags(str(it.get("tag") or "")) or ["xhs", "小红书", "AI日报"],
+                    "date": date,
+                    "time": time,
+                    "source": "xhs",
+                    "summary": _truncate(analysis or summary, 140),
+                    "meta": {
+                        "stage2_path": str(stage2_path),
+                        "url": url,
+                        "score": score,
+                        "rank": rank,
+                        "bucket": "other_items",
+                        "unique_key": unique_key,
+                    },
+                }
+            )
 
-    return {
-        "title": f"小红书AI日报（{date}）" if date else "小红书AI日报",
-        "content": content,
-        "tags": ["xhs", "小红书", "AI日报"],
-        "date": date,
-        "time": time,
-        "source": "xhs",
-        "summary": _truncate(overview, 140),
-        "meta": {"stage2_path": str(stage2_path)},
-    }
+    return docs
 
 
 def export_report_documents(
@@ -319,9 +401,9 @@ def export_report_documents(
         xhs_stage2 = find_latest_xhs_stage2_for_date(date_key) if date_key else find_latest_xhs_stage2()
 
     if wechat_stage2 is not None and wechat_stage2.exists():
-        docs.append(to_report_document_wechat(wechat_stage2))
+        docs.extend(to_report_documents_wechat(wechat_stage2))
     if xhs_stage2 is not None and xhs_stage2.exists():
-        docs.append(to_report_document_xhs(xhs_stage2))
+        docs.extend(to_report_documents_xhs(xhs_stage2))
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(docs, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
