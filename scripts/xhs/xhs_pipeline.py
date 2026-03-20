@@ -87,7 +87,16 @@ def _fetch_with_tikhub(
     if not api_key:
         return ProviderResult(provider="tikhub", notes=[], error="missing_tikhub_api_key")
 
-    metas = _iter_recent_note_metas(user_id=user_id, api_key=api_key, limit=limit, retries=retries)
+    try:
+        metas = _iter_recent_note_metas(
+            user_id=user_id,
+            api_key=api_key,
+            limit=limit,
+            retries=retries,
+            timeout_sec=timeout_sec,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return ProviderResult(provider="tikhub", notes=[], error=f"list_failed:{exc}")
     out: List[Dict[str, Any]] = []
     errors: List[str] = []
 

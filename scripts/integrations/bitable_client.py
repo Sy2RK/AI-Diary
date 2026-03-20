@@ -6,6 +6,27 @@ from typing import Any, Dict, List, Optional
 FEISHU_OPENAPI = "https://open.feishu.cn/open-apis"
 
 
+def _extract_unique_key_field(fields: Dict[str, Any]) -> str:
+    """
+    Extract unique key value from a Bitable record fields object.
+
+    Kept local in this module so BitableClient does not depend on bitable_sync.py
+    (avoids circular imports and runtime NameError).
+    """
+    if not isinstance(fields, dict):
+        return ""
+    value = fields.get("唯一键")
+    if value is None:
+        value = fields.get("unique_key")
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, list) and value:
+        return str(value[0]).strip()
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
 def _to_attachment_value(file_tokens: List[str]) -> Optional[List[Dict[str, str]]]:
     tokens = [str(t).strip() for t in (file_tokens or []) if str(t).strip()]
     if not tokens:

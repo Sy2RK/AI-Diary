@@ -302,6 +302,7 @@ def _iter_recent_note_metas(
     limit: int,
     dump_dir: Optional[Path] = None,
     retries: int = 2,
+    timeout_sec: int = 20,
 ) -> List[Dict[str, Any]]:
     """
     Fetch recent note metas via get_user_notes pagination.
@@ -315,15 +316,25 @@ def _iter_recent_note_metas(
         resp = None
         for _ in range(max(1, int(retries))):
             try:
-                resp = fetch_user_notes(user_id=user_id, api_key=api_key, cursor=cursor)
+                resp = fetch_user_notes(user_id=user_id, api_key=api_key, cursor=cursor, timeout_sec=timeout_sec)
                 break
             except Exception as exc:  # noqa: BLE001
                 last_exc = exc
                 try:
-                    resp = fetch_user_notes_alt_userid(user_id=user_id, api_key=api_key, cursor=cursor)
+                    resp = fetch_user_notes_alt_userid(
+                        user_id=user_id,
+                        api_key=api_key,
+                        cursor=cursor,
+                        timeout_sec=timeout_sec,
+                    )
                     break
                 except Exception as exc2:  # noqa: BLE001
-                    last_exc = exc2
+                    # If TikHub doesn't accept `userid` param, keep original error.
+                    msg = str(exc2)
+                    if "HTTPError 422" in msg and "user_id" in msg and "Field required" in msg:
+                        last_exc = exc
+                    else:
+                        last_exc = exc2
                     resp = None
         if resp is None:
             if last_exc:
@@ -965,6 +976,7 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=0, help="Max notes per profile for --profile-url/--from-config (0 uses config maxcrawl)")
     parser.add_argument("--since", default="", help="Only keep notes newer than this date (YYYY-MM-DD)")
     parser.add_argument("--retries", type=int, default=2, help="HTTP retries for TikHub list/detail requests (default: 2)")
+    parser.add_argument("--timeout-sec", type=int, default=0, help="HTTP timeout seconds for TikHub requests (0=auto)")
     parser.add_argument("--refetch-empty", type=int, default=1, help="Refetch note detail when parsed content is empty (default: 1)")
     parser.add_argument(
         "--video-mode",
@@ -1011,6 +1023,19 @@ def main() -> int:
         print("Missing TikHub API key. Pass --api-key or set env TIKHUB_API_KEY", file=sys.stderr)
         return 2
 
+    # Resolve timeout: CLI > env > default 40
+    try:
+        timeout_sec = int(args.timeout_sec or 0)
+    except Exception:
+        timeout_sec = 0
+    if timeout_sec <= 0:
+        try:
+            timeout_sec = int(os.environ.get("TIKHUB_TIMEOUT_SEC", "0"))
+        except Exception:
+            timeout_sec = 0
+    if timeout_sec <= 0:
+        timeout_sec = 40
+
     out_root = Path(args.outputs)
     run = ensure_run_dirs(out_root, date_str=args.date.strip())
     print(f"[tikhub] run_dir={run.run_dir}")
@@ -1042,13 +1067,18 @@ def main() -> int:
             if not uid or not name:
                 continue
             print(f"[tikhub] profile={name} url={url} user_id={uid} limit={per_limit}")
-            metas = _iter_recent_note_metas(
-                user_id=uid,
-                api_key=api_key,
-                limit=per_limit,
-                dump_dir=run.raw_dir,
-                retries=int(args.retries),
-            )
+            try:
+                metas = _iter_recent_note_metas(
+                    user_id=uid,
+                    api_key=api_key,
+                    limit=per_limit,
+                    dump_dir=run.raw_dir,
+                    retries=int(args.retries),
+                    timeout_sec=timeout_sec,
+                )
+            except Exception as exc:  # noqa: BLE001
+                print(f"[tikhub] profile={name} list_failed: {exc}", file=sys.stderr)
+                continue
             if not metas:
                 print(f"[tikhub] profile={name} got 0 metas (get_user_notes response shape may differ).", file=sys.stderr)
             for m in metas:
@@ -1083,6 +1113,7 @@ def main() -> int:
             limit=per_limit,
             dump_dir=run.raw_dir,
             retries=int(args.retries),
+            timeout_sec=timeout_sec,
         )
         for m in metas:
             nid = str(m.get("note_id") or m.get("noteId") or m.get("id") or "").strip()

@@ -62,19 +62,103 @@ def _infer_ext(url: str, content_type: str) -> str:
     return ".jpg"
 
 
+def _request_headers() -> List[Dict[str, str]]:
+    # Some CDN image links require browser-like headers and referer to pass anti-hotlink checks.
+    common = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        ),
+        "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        "Connection": "keep-alive",
+    }
+    return [
+        common,
+        {
+            **common,
+            "Referer": "https://www.xiaohongshu.com/",
+            "Origin": "https://www.xiaohongshu.com",
+        },
+        {
+            **common,
+            "Accept": "*/*",
+            "Referer": "https://www.xiaohongshu.com/explore/",
+            "Origin": "https://www.xiaohongshu.com",
+        },
+    ]
+
+
+def _candidate_image_urls(url: str) -> List[str]:
+    u = str(url or "").strip()
+    if not u:
+        return []
+    out: List[str] = []
+
+    def add(v: str) -> None:
+        vv = str(v or "").strip()
+        if not vv:
+            return
+        if vv in out:
+            return
+        out.append(vv)
+
+    add(u)
+    if u.startswith("http://"):
+        add("https://" + u[len("http://") :])
+    if "?" in u:
+        add(u.split("?", 1)[0])
+        if u.startswith("http://"):
+            add("https://" + u[len("http://") :].split("?", 1)[0])
+    return out
+
+
 def download_image(url: str, dest_path: Path, timeout_sec: int = 30) -> Tuple[bool, str]:
     try:
         import requests
     except Exception as exc:  # noqa: BLE001
         return False, f"missing_requests:{exc}"
 
+    last_error = ""
     try:
-        resp = requests.get(url, timeout=timeout_sec)
-        resp.raise_for_status()
-        ext = _infer_ext(url, resp.headers.get("content-type", ""))
-        final_path = dest_path.with_suffix(ext)
-        final_path.write_bytes(resp.content)
-        return True, str(final_path)
+        with requests.Session() as session:
+            for try_url in _candidate_image_urls(url):
+                for headers in _request_headers():
+                    try:
+                        resp = session.get(try_url, headers=headers, timeout=timeout_sec, allow_redirects=True)
+                        # Retry with another url/header set on typical anti-hotlink and transient statuses.
+                        if resp.status_code in (403, 405, 429, 500, 502, 503, 504):
+                            last_error = f"http_{resp.status_code}:{try_url}"
+                            continue
+                        resp.raise_for_status()
+                        ext = _infer_ext(try_url, resp.headers.get("content-type", ""))
+                        final_path = dest_path.with_suffix(ext)
+                        final_path.write_bytes(resp.content)
+                        return True, str(final_path)
+                    except Exception as exc:  # noqa: BLE001
+                        last_error = str(exc)
+                        continue
+
+        # Fallback to urllib in case requests is blocked but basic GET still works.
+        try:
+            from urllib.request import Request, urlopen
+
+            for try_url in _candidate_image_urls(url):
+                try:
+                    req = Request(try_url, headers=_request_headers()[-1], method="GET")
+                    with urlopen(req, timeout=timeout_sec) as resp:
+                        data = resp.read()
+                        ctype = resp.headers.get("content-type", "")
+                    ext = _infer_ext(try_url, ctype)
+                    final_path = dest_path.with_suffix(ext)
+                    final_path.write_bytes(data)
+                    return True, str(final_path)
+                except Exception as exc2:  # noqa: BLE001
+                    last_error = str(exc2)
+                    continue
+        except Exception as exc2:  # noqa: BLE001
+            return False, f"download_error:{last_error or exc2}; fallback_error:{exc2}"
+        return False, f"download_error:{last_error or 'unknown'}"
     except Exception as exc:  # noqa: BLE001
         return False, f"download_error:{exc}"
 

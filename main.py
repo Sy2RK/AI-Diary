@@ -475,7 +475,15 @@ def _run_interactive_cli(args: argparse.Namespace) -> int:
             _menu_web_export(project_config=args.project_config, profile=args.profile)
             continue
         if choice == "5":
-            print("该功能暂未实现，后续会接入完整的一键链路。")
+            pcfg = _prompt("统一配置路径", default=args.project_config)
+            prof = _prompt("配置环境(profile)", default=args.profile)
+            push_at = _prompt("推送时间(HH:MM)", default="10:00")
+            tz = _prompt("时区", default="Asia/Shanghai")
+            args2 = ["--config", pcfg, "--push-at", push_at, "--tz", tz]
+            if prof:
+                args2 += ["--profile", prof]
+            code = _run_py(str(Path("scripts") / "automation" / "daily_run.py"), args2)
+            print(f"退出码: {code}")
             continue
 
         print("无效选项，请重试。")
