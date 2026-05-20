@@ -5,6 +5,7 @@ Aily应用ID测试脚本 - 针对"AI日报new"机器人
 专门测试各种可能的Aily应用ID格式，找到正确的aily.app_id
 """
 
+import os
 import requests
 import json
 import time
@@ -248,7 +249,7 @@ def main():
     
     # 使用您提供的凭证
     app_id = "cli_a9f8b4203eb8dcca"
-    app_secret = "aViEyBopvecfzOnKICvb3elkWKTeBefO"
+    app_secret = ""
     
     print(f"📱 机器人ID: {app_id}")
     print(f"🔑 用户ID: 7594288708510125236 (沈正一)")
@@ -287,7 +288,7 @@ class AilyConfig:
     
     # 机器人凭证（飞书开放平台）
     BOT_APP_ID = "{app_id}"
-    BOT_APP_SECRET = "{app_secret}"
+    BOT_APP_SECRET = ""
     
     # Aily应用ID（通过测试找到的）
     AILY_APP_ID = "{best_id}"

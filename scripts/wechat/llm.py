@@ -14,9 +14,9 @@ if __package__ in (None, ""):
 
 from crawler_common.config_entry import DEFAULT_PROJECT_CONFIG, resolve_legacy_config_for_cli
 
-# 基础配置（可直接填写；api_key 建议用环境变量 ARK_API_KEY）
+# 基础配置（api_key 使用环境变量 ARK_API_KEY）
 LLM_API_URL = "https://ark.cn-beijing.volces.com/api/v3"  # 可留空使用默认域名
-LLM_API_KEY = "1cd0b5da-fcaa-4ebe-9bf5-2364f1ae81fc"  # 留空则使用环境变量 ARK_API_KEY
+LLM_API_KEY = ""  # 留空则使用环境变量 ARK_API_KEY
 LLM_MODEL = "doubao-seed-1-6-251015"  # 模型/endpoint 名
 LLM_PROMPT = ""  # prompt 仅从 YAML 读取
 LLM_TEMPERATURE = 0.3

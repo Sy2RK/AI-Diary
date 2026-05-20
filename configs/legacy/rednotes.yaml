@@ -33,14 +33,14 @@ accounts:
 - name: 设计师大东（教程版）
   url: https://www.xiaohongshu.com/user/profile/5ee07eb7000000000100481b
 qwen:
-  api_key: sk-fa546040e339425d9164bf43ae05501b
+  api_key: ''
   base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
   model: qwen3-vl-plus
   timeout_sec: 120
   enable_thinking: true
 feishu:
   app_id: cli_a9f8b4203eb8dcca
-  app_secret: aViEyBopvecfzOnKICvb3elkWKTeBefO
+  app_secret: ''
   receive_id_type: chat_id
   receive_id: oc_ea5dd55418d0090e3dabb3a5210af9c8
 bitable:

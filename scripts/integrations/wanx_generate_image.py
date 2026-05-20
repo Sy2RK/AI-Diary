@@ -8,7 +8,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import unquote, urlparse
 
-DEFAULT_DASHSCOPE_API_KEY = "sk-fa546040e339425d9164bf43ae05501b"
+DEFAULT_DASHSCOPE_API_KEY = ""
 
 # Wan2.6 HTTP sync endpoint (Beijing region)
 DEFAULT_SYNC_BASE_URL = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
@@ -144,7 +144,7 @@ def main() -> int:
     parser.add_argument(
         "--api-key",
         default="",
-        help="DashScope API Key；不传则优先使用环境变量 DASHSCOPE_API_KEY，最后回退到脚本内置默认值",
+        help="DashScope API Key；不传则使用环境变量 DASHSCOPE_API_KEY",
     )
     args = parser.parse_args()
 

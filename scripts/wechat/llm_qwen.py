@@ -15,7 +15,7 @@ from crawler_common.config_entry import DEFAULT_PROJECT_CONFIG, resolve_legacy_c
 
 # 基础配置
 QWEN_API_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-QWEN_API_KEY = "sk-fa546040e339425d9164bf43ae05501b"  
+QWEN_API_KEY = ""
 QWEN_MODEL = "qwen3-max"
 QWEN_TEMPERATURE = 0.2
 QWEN_TIMEOUT_SEC = 300
@@ -66,7 +66,7 @@ def get_qwen_client() -> QwenClient:
 
     api_key = (QWEN_API_KEY or os.environ.get("QWEN_API_KEY", "") or os.environ.get("DASHSCOPE_API_KEY", "")).strip()
     if not api_key:
-        raise RuntimeError("请在 llm_qwen.py 填写 QWEN_API_KEY 或设置环境变量 QWEN_API_KEY / DASHSCOPE_API_KEY")
+        raise RuntimeError("请设置环境变量 QWEN_API_KEY / DASHSCOPE_API_KEY")
 
     model = (os.environ.get("QWEN_MODEL", "") or QWEN_MODEL).strip()
     if not model:

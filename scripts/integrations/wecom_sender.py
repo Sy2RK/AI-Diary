@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,7 +11,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
-DEFAULT_WEBHOOK = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=fc05d213-206b-4ac2-922d-a3bb311f3c94"
+DEFAULT_WEBHOOK = os.environ.get("WECOM_WEBHOOK_URL", "")
 # WeCom markdown.content has a max length limit. Use a per-message cap and send multiple messages.
 # Note: WeCom counts by bytes (UTF-8), not Python characters.
 MAX_MARKDOWN_BYTES = 3600

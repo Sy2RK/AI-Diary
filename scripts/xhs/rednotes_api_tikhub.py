@@ -18,9 +18,9 @@ if __package__ in (None, ""):
 from scripts.xhs.tikhub_client import fetch_note_info, fetch_user_notes, fetch_user_notes_alt_userid, fetch_video_note_info
 from crawler_common.config_entry import DEFAULT_PROJECT_CONFIG, resolve_legacy_config_for_cli
 
-# --- Quick-test hardcoded defaults (TEST ONLY) ---
-# You can still override via `--api-key/--note-id` or env `TIKHUB_API_KEY`.
-HARDCODED_TIKHUB_API_KEY = "r8IeI/oWx3L7pVKrENPE3Av0FDGEXrtS6TzXgV7eCqGAgnq4dzicaAizbA=="
+# --- Quick-test defaults (TEST ONLY) ---
+# Provide the API key via `--api-key` or env `TIKHUB_API_KEY`.
+HARDCODED_TIKHUB_API_KEY = ""
 HARDCODED_NOTE_ID = "69450d1a000000000d034b6f"
 
 

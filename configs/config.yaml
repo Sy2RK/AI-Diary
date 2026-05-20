@@ -185,7 +185,7 @@
       "retry_times": 1
     },
     "tikhub": {
-      "api_key": "iq9dX+JJ/Hf1k2nJRNqE6RnKDjmKHpI5yADCqW+6d9fl2k2HFmyoSRyROw==",
+      "api_key": "",
       "retries": 2,
       "timeout_sec": 20
     },
@@ -195,7 +195,7 @@
       "interval_sec": 1.5
     },
     "qwen": {
-      "api_key": "sk-fa546040e339425d9164bf43ae05501b",
+      "api_key": "",
       "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
       "model": "qwen3-vl-plus",
       "timeout_sec": 120,
@@ -210,7 +210,7 @@
   },
   "feishu": {
     "app_id": "cli_a9f8b4203eb8dcca",
-    "app_secret": "aViEyBopvecfzOnKICvb3elkWKTeBefO",
+    "app_secret": "",
     "receive_id_type": "chat_id",
     "receive_id": "oc_ea5dd55418d0090e3dabb3a5210af9c8"
   },

@@ -1,4 +1,5 @@
 import argparse
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -176,7 +177,7 @@ def _menu_wechat(project_config: str, profile: str) -> None:
         if choice == "5":
             webhook = _prompt(
                 "企业微信 webhook（留空使用默认）",
-                default="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=fc05d213-206b-4ac2-922d-a3bb311f3c94",
+                default=os.getenv("WECOM_WEBHOOK_URL", ""),
             ).strip()
             if not webhook:
                 print("未填写 webhook，已取消。")
@@ -276,7 +277,7 @@ def _menu_xhs(project_config: str, profile: str) -> None:
         if choice == "6":
             webhook = _prompt(
                 "企业微信 webhook（留空使用默认）",
-                default="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=fc05d213-206b-4ac2-922d-a3bb311f3c94",
+                default=os.getenv("WECOM_WEBHOOK_URL", ""),
             ).strip()
             if not webhook:
                 print("未填写 webhook，已取消。")
